@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>DUY BẢO TOOL V14.7.2</title>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <style>
+    body {
+      background: black;
+      color: lime;
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 30px;
+    }
+    .hidden {
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.6s ease;
+    }
+    .visible {
+      opacity: 1;
+      pointer-events: auto;
+      transition: all 0.6s ease;
+    }
+    .box {
+      border: 2px solid lime;
+      border-radius: 15px;
+      padding: 20px;
+      box-shadow: 0 0 20px lime;
+      max-width: 400px;
+      margin: auto;
+    }
+    input, button {
+      padding: 10px;
+      margin: 10px;
+      width: 90%;
+      font-size: 16px;
+      border-radius: 8px;
+      border: none;
+    }
+    button {
+      background-color: lime;
+      color: black;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .dice-box {
+      display: flex;
+      justify-content: center;
+      margin-top: 20px;
+      gap: 10px;
+    }
+    .dice {
+      width: 60px;
+      height: 60px;
+      background: #111;
+      border: 2px solid lime;
+      border-radius: 10px;
+      font-size: 28px;
+      font-weight: bold;
+      color: yellow;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+  </style>
+</head>
+<body>
+
+<!-- BƯỚC 1: Xác thực key -->
+<div id="step1" class="box visible">
+  <h2>NHẬP KEY</h2>
+  <input id="email" type="email" placeholder="Nhập Gmail được cấp">
+  <input id="key" type="text" placeholder="Nhập key được cấp">
+  <button onclick="kiemTraKey()">TIẾP TỤC</button>
+  <p id="loginMsg"></p>
+</div>
+
+<!-- BƯỚC 2: Giao diện dự đoán -->
+<div id="step2" class="box hidden">
+  <h2>DỰ ĐOÁN MD5</h2>
+  <input id="md5" type="text" placeholder="Nhập mã MD5 phiên sau">
+  <button onclick="duDoan()">DỰ ĐOÁN</button>
+  <div class="dice-box">
+    <div class="dice" id="d1">?</div>
+    <div class="dice" id="d2">?</div>
+    <div class="dice" id="d3">?</div>
+  </div>
+  <div id="kq" style="margin-top:15px; font-size: 18px;"></div>
+</div>
+
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyDV-WnnRBzNGaJjCmJMY7NOWEPFioHOioU",
+    authDomain: "duybao-v11.firebaseapp.com",
+    databaseURL: "https://duybao-v11-default-rtdb.firebaseio.com",
+    projectId: "duybao-v11",
+    storageBucket: "duybao-v11.appspot.com",
+    messagingSenderId: "637858629893",
+    appId: "1:637858629893:web:ad4d6de4f0f191b22b4f6c"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+
+  async function kiemTraKey() {
+    const email = document.getElementById("email").value.trim();
+    const key = document.getElementById("key").value.trim();
+    const msg = document.getElementById("loginMsg");
+
+    if (!email || !key) {
+      msg.innerText = "Vui lòng nhập đầy đủ.";
+      return;
+    }
+
+    const snap = await db.ref("keys/" + key).get();
+    const data = snap.val();
+
+    if (!data || data.email !== email) {
+      msg.innerText = "Key không hợp lệ hoặc sai Gmail.";
+      return;
+    }
+
+    const today = new Date().toISOString().split("T")[0];
+    if (data.expire < today || data.used >= data.maxUse) {
+      msg.innerText = "Key đã hết hạn hoặc vượt lượt dùng!";
+      return;
+    }
+
+    // Tăng lượt dùng
+    await db.ref("keys/" + key + "/used").set(data.used + 1);
+
+    // Chuyển cảnh
+    document.getElementById("step1").classList.remove("visible");
+    document.getElementById("step1").classList.add("hidden");
+    setTimeout(() => {
+      document.getElementById("step2").classList.remove("hidden");
+      document.getElementById("step2").classList.add("visible");
+    }, 600);
+  }
+
+  function duDoan() {
+    const md5 = document.getElementById("md5").value.trim().toLowerCase();
+    if (md5.length < 32) {
+      document.getElementById("kq").innerText = "MD5 không hợp lệ!";
+      return;
+    }
+
+    // Dùng byte 8-12-15 theo học mẫu
+    const b1 = parseInt(md5.slice(14, 16), 16);
+    const b2 = parseInt(md5.slice(22, 24), 16);
+    const b3 = parseInt(md5.slice(28, 30), 16);
+
+    const x1 = b1 % 6 + 1;
+    const x2 = b2 % 6 + 1;
+    const x3 = b3 % 6 + 1;
+    const tong = x1 + x2 + x3;
+    const ketqua = tong >= 11 ? "TÀI" : "XỈU";
+
+    document.getElementById("d1").innerText = x1;
+    document.getElementById("d2").innerText = x2;
+    document.getElementById("d3").innerText = x3;
+    document.getElementById("kq").innerHTML = `<b>KẾT QUẢ:</b> ${ketqua} - Tổng: ${tong}`;
+  }
+</script>
+
+</body>
+</html>
